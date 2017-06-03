@@ -55,11 +55,13 @@ class SublimeTerminalBuffer():
         self._bytestream.feed(data)
 
     def update_view(self):
+        ret = False
         if len(self._screen.dirty) > 0:
             # Convert the complex pyte buffer to a simple color map
-            color_map = {}
             if self.show_colors:
                 color_map = convert_pyte_buffer_lines_to_colormap(self._screen.buffer, self._screen.dirty)
+            else:
+                color_map = {}
 
             # Update the view - note that the update is saved on the view
             # instead of being sent as an argument since this is faster and also
@@ -72,9 +74,11 @@ class SublimeTerminalBuffer():
             }
             self._view.terminal_view_buffer_update = update
             self._view.run_command("terminal_view_update_lines")
+            ret = True
 
         self._update_cursor()
         self._screen.dirty.clear()
+        return ret
 
     def is_open(self):
         """

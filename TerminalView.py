@@ -95,16 +95,28 @@ class TerminalViewCore(sublime_plugin.TextCommand):
         IDEAL_DELTA = 1.0 / 30.0
         current = time.time()
         while not self._stopped():
+            start = time.time()
             self._poll_shell_output()
-            self._refresh_terminal_view()
+            st = time.time() - start
+
+            start = time.time()
+            ret = self._refresh_terminal_view()
+            rt = time.time() - start
+
+            start = time.time()
             self._check_for_screen_resize()
             self._check_if_terminal_closed_or_shell_exited()
+            ut = time.time() - start
+
             previous = current
             current = time.time()
             actual_delta = current - previous
             time_left = IDEAL_DELTA - actual_delta
             if time_left > 0.0:
                 time.sleep(time_left)
+
+            if ret:
+                print(st*1000., rt*1000., ut*1000.)
 
     def _poll_shell_output(self):
         """
@@ -120,7 +132,7 @@ class TerminalViewCore(sublime_plugin.TextCommand):
         """
         Update the terminal view so its showing the latest data.
         """
-        self._terminal_buffer.update_view()
+        return self._terminal_buffer.update_view()
 
     def _check_for_screen_resize(self):
         """
