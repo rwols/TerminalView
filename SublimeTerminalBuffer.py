@@ -1,4 +1,5 @@
 import collections
+import time
 
 import sublime
 import sublime_plugin
@@ -45,7 +46,7 @@ class SublimeTerminalBuffer():
 
         # Use pyte as underlying terminal emulator
         self._bytestream = pyte.ByteStream()
-        self._screen = pyte.DiffScreen(80, 24)
+        self._screen = pyte.DiffScreen(400, 150)
         self._bytestream.attach(self._screen)
 
     def set_keypress_callback(self, callback):
@@ -57,6 +58,9 @@ class SublimeTerminalBuffer():
     def update_view(self):
         ret = False
         if len(self._screen.dirty) > 0:
+            # Time update time
+            start = time.time()
+
             # Convert the complex pyte buffer to a simple color map
             if self.show_colors:
                 color_map = convert_pyte_buffer_lines_to_colormap(self._screen.buffer, self._screen.dirty)
@@ -75,6 +79,9 @@ class SublimeTerminalBuffer():
             self._view.terminal_view_buffer_update = update
             self._view.run_command("terminal_view_update_lines")
             ret = True
+
+            update_time = time.time() - start
+            utils.log_to_console("Updated terminal view in %.3f ms" % (update_time*1000.))
 
         self._update_cursor()
         self._screen.dirty.clear()
