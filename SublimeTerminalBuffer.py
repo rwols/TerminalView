@@ -1,29 +1,33 @@
+"""
+Wrapper module around a Sublime Text 3 view for showing a terminal look-a-like
+"""
+
 import collections
 import time
 
 import sublime
 import sublime_plugin
 
+from . import Utils
 from . import pyte
-from . import utils
 
 
 class SublimeTerminalBuffer():
     def __init__(self, sublime_view, title):
         self._view = sublime_view
-        sublime_view.set_name(title)
-        sublime_view.set_scratch(True)
-        sublime_view.set_read_only(True)
-        sublime_view.settings().set("gutter", False)
-        sublime_view.settings().set("highlight_line", False)
-        sublime_view.settings().set("auto_complete_commit_on_tab", False)
-        sublime_view.settings().set("draw_centered", False)
-        sublime_view.settings().set("word_wrap", False)
-        sublime_view.settings().set("auto_complete", False)
-        sublime_view.settings().set("draw_white_space", "none")
-        sublime_view.settings().set("draw_indent_guides", False)
-        sublime_view.settings().set("caret_style", "blink")
-        sublime_view.settings().add_on_change('color_scheme', lambda: set_color_scheme(sublime_view))
+        self._view.set_name(title)
+        self._view.set_scratch(True)
+        self._view.set_read_only(True)
+        self._view.settings().set("gutter", False)
+        self._view.settings().set("highlight_line", False)
+        self._view.settings().set("auto_complete_commit_on_tab", False)
+        self._view.settings().set("draw_centered", False)
+        self._view.settings().set("word_wrap", False)
+        self._view.settings().set("auto_complete", False)
+        self._view.settings().set("draw_white_space", "none")
+        self._view.settings().set("draw_indent_guides", False)
+        self._view.settings().set("caret_style", "blink")
+        self._view.settings().add_on_change('color_scheme', lambda: set_color_scheme(self._view))
 
         # Check if colors are enabled
         settings = sublime.load_settings('TerminalView.sublime-settings')
@@ -31,18 +35,18 @@ class SublimeTerminalBuffer():
 
         # Mark in the views private settings that this is a terminal view so we
         # can use this as context in the keymap
-        sublime_view.settings().set("terminal_view", True)
-        sublime.active_window().focus_view(sublime_view)
+        self._view.settings().set("terminal_view", True)
+        sublime.active_window().focus_view(self._view)
 
         # Save a dict on the view to store color regions for each line
-        sublime_view.terminal_view_color_regions = {}
+        self._view.terminal_view_color_regions = {}
 
         # Save keypress callback for this view
-        sublime_view.terminal_view_keypress_callback = None
+        self._view.terminal_view_keypress_callback = None
 
         # Keep track of the content in the buffer (having a local copy is a lot
         # faster than using the ST3 API to get the contents)
-        sublime_view.terminal_view_buffer_contents = {}
+        self._view.terminal_view_buffer_contents = {}
 
         # Use pyte as underlying terminal emulator
         self._bytestream = pyte.ByteStream()
@@ -56,16 +60,16 @@ class SublimeTerminalBuffer():
         self._bytestream.feed(data)
 
     def update_view(self):
-        ret = False
-        if len(self._screen.dirty) > 0:
+        nb_dirty_lines = len(self._screen.dirty)
+        if nb_dirty_lines > 0:
             # Time update time
             start = time.time()
 
             # Convert the complex pyte buffer to a simple color map
+            color_map = {}
             if self.show_colors:
-                color_map = convert_pyte_buffer_lines_to_colormap(self._screen.buffer, self._screen.dirty)
-            else:
-                color_map = {}
+                color_map = convert_pyte_buffer_lines_to_colormap(self._screen.buffer,
+                                                                  self._screen.dirty)
 
             # Update the view - note that the update is saved on the view
             # instead of being sent as an argument since this is faster and also
@@ -78,14 +82,12 @@ class SublimeTerminalBuffer():
             }
             self._view.terminal_view_buffer_update = update
             self._view.run_command("terminal_view_update_lines")
-            ret = True
 
             update_time = time.time() - start
-            utils.log_to_console("Updated terminal view in %.3f ms" % (update_time*1000.))
+            Utils.log_to_console("Updated terminal view in %.3f ms" % (update_time * 1000.))
 
         self._update_cursor()
         self._screen.dirty.clear()
-        return ret
 
     def is_open(self):
         """
@@ -113,11 +115,11 @@ class SublimeTerminalBuffer():
         if pixel_per_line == 0 or pixel_per_char == 0:
             return (0, 0)
 
-        nb_columns = int(pixel_width/pixel_per_char) - 2
+        nb_columns = int(pixel_width / pixel_per_char) - 2
         if nb_columns < 40:
             nb_columns = 40
 
-        nb_rows = int(pixel_height/pixel_per_line)
+        nb_rows = int(pixel_height / pixel_per_line)
         if nb_rows < 20:
             nb_rows = 20
 
@@ -131,14 +133,14 @@ class SublimeTerminalBuffer():
 
 
 class TerminalViewMoveCursor(sublime_plugin.TextCommand):
-    def run(self, edit, cursor_x, cursor_y):
+    def run(self, _, cursor_x, cursor_y):
         tp = self.view.text_point(cursor_y, cursor_x)
         self.view.sel().clear()
         self.view.sel().add(sublime.Region(tp, tp))
 
 
 class TerminalViewKeypress(sublime_plugin.TextCommand):
-    def run(self, edit, **kwargs):
+    def run(self, _, **kwargs):
         if type(kwargs["key"]) is not str:
             sublime.error_message("Terminal View: Got keypress with non-string key")
             return
@@ -157,7 +159,7 @@ class TerminalViewKeypress(sublime_plugin.TextCommand):
             kwargs["shift"] = False
 
         out_str = "Keypress registered: " + str(kwargs)
-        utils.log_to_console(out_str)
+        Utils.log_to_console(out_str)
 
         if self.view.terminal_view_keypress_callback:
             cb = self.view.terminal_view_keypress_callback
@@ -195,7 +197,7 @@ class TerminalViewUpdateLines(sublime_plugin.TextCommand):
         if line_no in self.view.terminal_view_color_regions:
             region_deque = self.view.terminal_view_color_regions[line_no]
             try:
-                while(1):
+                while True:
                     region = region_deque.popleft()
                     self.view.erase_regions(region)
             except IndexError:
@@ -233,7 +235,7 @@ class TerminalViewUpdateLines(sublime_plugin.TextCommand):
             color_start = line_start + idx
 
             # Make region that should be colored
-            buffer_region = sublime.Region(color_start, color_start+length)
+            buffer_region = sublime.Region(color_start, color_start + length)
             region_key = "%i,%s" % (line_no, idx)
 
             # Add the region
@@ -278,11 +280,20 @@ def convert_pyte_buffer_lines_to_colormap(buffer, lines):
         # continuous fields with same color we want to combine them for
         # optimization and because it looks better when rendered in ST3.
         line = buffer[line_index]
-        if len(line) == 0:
+        line_len = len(line)
+        if line_len == 0:
             continue
 
         # Initialize vars to keep track of continuous colors
-        last_color = (line[0].bg, line[0].fg)
+        last_bg = line[0].bg
+        if last_bg == "default":
+            last_bg = "black"
+
+        last_fg = line[0].fg
+        if last_fg == "default":
+            last_fg = "white"
+
+        last_color = (last_bg, last_fg)
         last_index = 0
         field_length = 0
 
@@ -301,7 +312,6 @@ def convert_pyte_buffer_lines_to_colormap(buffer, lines):
                 fg = char.fg
 
             color = (bg, fg)
-
             if last_color == color:
                 field_length = field_length + 1
             else:
@@ -315,6 +325,13 @@ def convert_pyte_buffer_lines_to_colormap(buffer, lines):
                 last_color = color
                 last_index = char_index
                 field_length = 1
+
+            # Check if last color was active to the end of screen
+            if last_color != ("black", "white"):
+                color_dict = {"color": last_color, "field_length": field_length}
+                if line_index not in color_map:
+                    color_map[line_index] = {}
+                color_map[line_index][last_index] = color_dict
 
     return color_map
 
