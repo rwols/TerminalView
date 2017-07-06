@@ -6,6 +6,7 @@ import time
 
 import sublime
 import sublime_plugin
+
 from . import terminal_emulator
 
 
@@ -19,7 +20,8 @@ class SublimeTerminalBuffer():
         self._view.settings().set("highlight_line", False)
         self._view.settings().set("auto_complete_commit_on_tab", False)
         self._view.settings().set("draw_centered", False)
-        self._view.settings().set("word_wrap", False)
+        # We should never wrap anyway and this removes the horizontal scrollbar
+        self._view.settings().set("word_wrap", True)
         self._view.settings().set("auto_complete", False)
         self._view.settings().set("draw_white_space", "none")
         self._view.settings().set("draw_indent_guides", False)
@@ -29,8 +31,6 @@ class SublimeTerminalBuffer():
 
         if syntax_file is not None:
             self._view.set_syntax_file("Packages/User/" + syntax_file)
-
-        sublime.active_window().focus_view(self._view)
 
         settings = sublime.load_settings('TerminalView.sublime-settings')
         self._view.terminal_view_logger = logger
@@ -54,6 +54,8 @@ class SublimeTerminalBuffer():
         # faster than using the ST3 API to get the contents)
         self._view.terminal_view_buffer_contents = {}
 
+        self._view.terminal_view_last_update = 0
+
         # Use pyte as underlying terminal emulator
         hist = settings.get("terminal_view_scroll_history", 1000)
         ratio = settings.get("terminal_view_scroll_ratio", 0.5)
@@ -70,13 +72,16 @@ class SublimeTerminalBuffer():
         self._view.terminal_view_logger.log("Updated terminal emulator in %.3f ms" % (t * 1000.))
 
     def update_view(self):
+        # If update fails last_update remains the same
+        last_update = self._view.terminal_view_last_update
         self._view.run_command("terminal_view_update")
+        if self._view.terminal_view_last_update == last_update:
+            return False
+
+        return True
 
     def is_open(self):
-        if self._view.window() is not None:
-            return True
-
-        return False
+        return self._view.is_valid()
 
     def close(self):
         if self.is_open():
@@ -95,13 +100,14 @@ class SublimeTerminalBuffer():
         if pixel_per_line == 0 or pixel_per_char == 0:
             return (0, 0)
 
-        nb_columns = int(pixel_width / pixel_per_char) - 3
-        if nb_columns < 10:
-            nb_columns = 10
+        # Subtract one to avoid any wrapping issues
+        nb_columns = int(pixel_width / pixel_per_char) - 1
+        if nb_columns < 1:
+            nb_columns = 1
 
         nb_rows = int(pixel_height / pixel_per_line)
-        if nb_rows < 10:
-            nb_rows = 10
+        if nb_rows < 1:
+            nb_rows = 1
 
         return (nb_rows, nb_columns)
 
@@ -182,12 +188,20 @@ class TerminalViewPaste(sublime_plugin.TextCommand):
 
 class TerminalViewUpdate(sublime_plugin.TextCommand):
     def run(self, edit):
+        # When reloading the plugin the view sometimes becomes completely
+        # invalid as seen from text commands
+        if not hasattr(self.view, "terminal_view_emulator"):
+            return
+
         # Check if scroll was requested
         self._update_scrolling()
 
         # Update dirty lines in buffer if there are any
         dirty_lines = self.view.terminal_view_emulator.dirty_lines()
         if len(dirty_lines) > 0:
+            # Reset viewport when data is inserted
+            self._update_viewport_position()
+
             # Invalidate the last cursor position when dirty lines are updated
             self.view.terminal_view_last_cursor_pos = None
 
@@ -210,6 +224,11 @@ class TerminalViewUpdate(sublime_plugin.TextCommand):
         # terminal when starting or when a new prompt is being drawn at the
         # bottom
         self._update_cursor()
+
+        self.view.terminal_view_last_update = time.time()
+
+    def _update_viewport_position(self):
+        self.view.set_viewport_position((0, 0), animate=False)
 
     def _update_scrolling(self):
         if self.view.terminal_view_scroll is not None:
@@ -332,6 +351,14 @@ class TerminalViewUpdate(sublime_plugin.TextCommand):
             end_point = end_point + line_len
 
         return (start_point, end_point)
+
+
+class TerminalViewClear(sublime_plugin.TextCommand):
+    def run(self, edit):
+        self.view.set_read_only(False)
+        region = sublime.Region(0, self.view.size())
+        self.view.erase(edit, region)
+        self.view.set_read_only(True)
 
 
 def set_color_scheme(view):

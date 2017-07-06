@@ -26,7 +26,8 @@ class PyteTerminalEmulator():
 
     def resize(self, lines, cols):
         self._screen.scroll_to_bottom()
-        self._screen.dirty.update(range(lines))
+        dirty_lines = max(lines, self._screen.lines)
+        self._screen.dirty.update(range(dirty_lines))
         return self._screen.resize(lines, cols)
 
     def prev_page(self):
@@ -193,6 +194,50 @@ class CustomHistoryScreen(pyte.DiffScreen):
 
             self.dirty = set(range(self.lines))
 
+    def resize(self, lines=None, columns=None):
+        lines = lines or self.lines
+        columns = columns or self.columns
+
+        # First resize the lines:
+        line_diff = self.lines - lines
+
+        # a) if the current display size is less than the requested
+        #    size, add lines to the bottom.
+        if line_diff < 0:
+            self.buffer.extend(take(self.columns, self.default_line)
+                               for _ in range(line_diff, 0))
+        # b) if the current display size is greater than requested
+        #    size, take lines off the top.
+        elif line_diff > 0:
+            # JW tweak - if we only have spaces in the bottom of the screen
+            # remove those lines instead
+            disp = self.display[-line_diff:]
+            contents = "".join(disp)
+            if contents.isspace():
+                self.buffer[-line_diff:] = ()
+            else:
+                self.buffer[:line_diff] = ()
+
+        # Then resize the columns:
+        col_diff = self.columns - columns
+
+        # a) if the current display size is less than the requested
+        #    size, expand each line to the new size.
+        if col_diff < 0:
+            for y in range(lines):
+                self.buffer[y].extend(take(abs(col_diff), self.default_line))
+        # b) if the current display size is greater than requested
+        #    size, trim each line from the right to the new size.
+        elif col_diff > 0:
+            for line in self.buffer:
+                del line[columns:]
+
+        self.lines, self.columns = lines, columns
+        self.margins = Margins(0, self.lines - 1)
+
+        # JW tweak - move cursor upwards if its out of bounds do not reset it
+        self.ensure_bounds(use_margins=True)
+
 
 def take(n, iterable):
     """Returns first n items of the iterable as a list."""
@@ -227,7 +272,11 @@ def convert_pyte_buffer_to_colormap(buffer, lines):
         if last_fg == "default":
             last_fg = "white"
 
-        last_color = (last_bg, last_fg)
+        if line[0].reverse:
+            last_color = (last_fg, last_bg)
+        else:
+            last_color = (last_bg, last_fg)
+
         last_index = 0
         field_length = 0
 
@@ -245,7 +294,11 @@ def convert_pyte_buffer_to_colormap(buffer, lines):
             else:
                 fg = char.fg
 
-            color = (bg, fg)
+            if char.reverse:
+                color = (fg, bg)
+            else:
+                color = (bg, fg)
+
             if last_color == color:
                 field_length = field_length + 1
             else:

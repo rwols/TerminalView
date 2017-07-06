@@ -4,13 +4,13 @@
 
 A Linux/macOS plugin for Sublime Text 3 that allows for terminals inside editor views. The plugin uses a pseudo-terminal to start the underlying shell which means it supports
 
-* Interactive applications
+* Interactive applications (less, man, ipython, ssh, etc.)
 * Auto-completion
 * Terminal shortcuts (`ctrl`+`c`, etc.)
 * Password prompts
-* etc.
+* Basically everything you would expect from a terminal
 
-**Note that you may have to insert some keybindings in your user keymap for everything to work - see the keybindings section for details.**
+**Note, if you encounter any issues please check the "Common problems" section below for a solution.**
 
 ![example.gif](https://raw.githubusercontent.com/Wramberg/TerminalView/master/example.gif "TerminalView Demonstration")
 
@@ -22,7 +22,7 @@ To run this plugin you need
 * bash (this is not required but recommended, see "Changing shell" below for details)
 
 ## Installation
-To install from https://packagecontrol.io/
+To install from https://packagecontrol.io/packages/TerminalView
 
 1. Open the command palette (`ctrl`+`shift`+`p` by default) and find "Package Control: Install Package"
 2. Search for TerminalView and hit `enter` to install.
@@ -79,7 +79,7 @@ Shortcut | Description
 `ctrl` + `shift` + `t` / `n` | Open a new file
 `ctrl` + `shift` + `w` / `q` | Close the terminal view
 `ctrl` + `shift` + `up` / `down` / `left` / `right` | Move the ST3 cursor (not the terminal cursor)
-`ctrl` + `shift` + `home` / `end` | 1Move the ST3 cursor to beginning/end of line
+`ctrl` + `shift` + `home` / `end` | Move the ST3 cursor to beginning/end of line
 
 Note that standard ST3 keybindings for selection are **not** shadowed which mean you can use `shift` + `keys` for selection in the terminal in case you prefer to use the keyboard. These keybindings do not move the actual terminal cursor however so whenever the terminal is updated the cursor will snap back to its point of origin.
 
@@ -135,6 +135,21 @@ The matching could be improved upon but it will do for the purpose of this examp
 
 There are currently no syntax-files provided with the plugin so users must create their own. Note that any colors set by shell (except the black/white default) override colors set by the syntax highlighting.
 
+## Project switching and ST3 startup
+When switching projects or (re)starting ST3 the plugin restarts all terminals views. Unfortunately, there is no obvious way of restoring earlier sessions so the views are completely reset.
+
+## Common problems
+List of common problems you may encounter when using this plugin.
+
+#### A keybinding is not working even though it is listed in the keybindings section
+This is most likely because you have the key bound to something else in your user keymap file. To make it work find the missing keybinding in the TerminalView keymap and copy it to your user keymap. For details see the keybindings section above.
+
+#### The terminal is working but prints weird sequences like 133;C;
+Ensure you do not have a bash_profile file or similar that changes the value of the `TERM` environment variable. This is set to "linux" by the plugin and must stay that way. You can check it by calling `env | grep TERM` inside the terminal view in ST3. If the `TERM` is correct feel free to open an issue for further investigation.
+
+#### The terminal is sluggish and/or uses a lot of memory
+You may have other plugins that conflict with TerminalView. TerminalView does a lot of modifications to the buffer which can conflict with plugins like e.g. GotoLastEditEnhanced. In this particular case a history of all modifications are saved causing unbound memory usage. Please test TerminalView in isolation to see if the issue persists.
+
 ## Future development
 Development is performed ad-hoc and current plans include:
 
@@ -143,7 +158,6 @@ Development is performed ad-hoc and current plans include:
 * Support for "editor" mode where cursor can move freely and standard ST3 keybindings can be used
 * 256 color support
 * Support for more shells
-* Support for re-opening old sessions when ST3 is restarted (may not be feasible, investigation needed)
 * QOL shortcut that can find and open filepaths in the terminal window
 * Experimentation with Windows support (through WSL)
 

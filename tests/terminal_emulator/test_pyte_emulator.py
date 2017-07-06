@@ -2,6 +2,50 @@ import unittest
 
 from TerminalView import terminal_emulator
 
+class terminal_resize(unittest.TestCase):
+    def test_lines_resize(self):
+        nb_cols = 20
+        nb_lines = 6
+        emulator = terminal_emulator.PyteTerminalEmulator(cols=nb_cols, lines=nb_lines, history=100,
+                                                          ratio=10.5)
+        lines = []
+        lines.append("line 1")
+        lines.append("line TWO")
+        lines.append("line number three")
+
+        for line in lines:
+            emulator.feed((line + "\r\n").encode("utf8"))
+
+        display = emulator.display()
+        self.assertEqual(len(display), nb_lines)
+        for i in range(len(lines)):
+            self.assertEqual(display[i], lines[i].ljust(nb_cols))
+
+        # Remove two lines - we expect bottom ones to be removed since they are
+        # blank
+        nb_lines = 4
+        emulator.resize(nb_lines, nb_cols)
+        display = emulator.display()
+        self.assertEqual(len(display), nb_lines)
+        for i in range(len(lines)):
+            self.assertEqual(display[i], lines[i].ljust(nb_cols))
+
+        # Remove another line
+        nb_lines = 3
+        emulator.resize(nb_lines, nb_cols)
+        display = emulator.display()
+        self.assertEqual(len(display), nb_lines)
+        for i in range(len(lines)):
+            self.assertEqual(display[i], lines[i].ljust(nb_cols))
+
+        # Remove another - now we expect the top line to be removed
+        nb_lines = 2
+        emulator.resize(nb_lines, nb_cols)
+        display = emulator.display()
+        self.assertEqual(len(display), nb_lines)
+        for i in range(len(display)):
+            self.assertEqual(display[i], lines[i+1].ljust(nb_cols))
+
 
 class pyte_buffer_to_color_map(unittest.TestCase):
     def test_no_colors(self):
@@ -119,10 +163,54 @@ class pyte_buffer_to_color_map(unittest.TestCase):
 
         self.assertDictEqual(color_map, expected)
 
+    def test_reverse_default_colors(self):
+        buffer_factory = PyteBufferStubFactory(1, 13)
+        buffer_factory.set_color(0, 0, "default", "default", True)
+        buffer_factory.set_color(0, 1, "default", "default", True)
+        buffer_factory.set_color(0, 2, "default", "default", True)
+
+        buffer_factory.set_color(0, 3, "red", "default", True)
+        buffer_factory.set_color(0, 4, "red", "default", True)
+        buffer_factory.set_color(0, 5, "red", "default", True)
+
+        buffer_factory.set_color(0, 6, "green", "default", True)
+        buffer_factory.set_color(0, 7, "green", "default", True)
+        buffer_factory.set_color(0, 8, "green", "default", True)
+
+        buffer_factory.set_color(0, 9, "cyan", "default", True)
+        buffer_factory.set_color(0, 10, "cyan", "default", True)
+        buffer_factory.set_color(0, 11, "cyan", "default", True)
+
+        pyte_buffer = buffer_factory.produce()
+        color_map = terminal_emulator.convert_pyte_buffer_to_colormap(pyte_buffer, [0])
+
+        expected = {
+            0: {
+                0: {
+                    'field_length': 3,
+                    'color': ('white', 'black')
+                },
+                9: {
+                    'field_length': 3,
+                    'color': ('white', 'cyan')
+                },
+                3: {
+                    'field_length': 3,
+                    'color': ('white', 'red')
+                },
+                6: {
+                    'field_length': 3,
+                    'color': ('white', 'green')
+                }
+            }
+        }
+
+        self.assertDictEqual(color_map, expected)
+
 
 class PyteBufferStubFactory():
     def __init__(self, nb_lines, nb_cols):
-        default_char = CharStub("default", "default")
+        default_char = CharStub("default", "default", reverse=False)
 
         self.buffer = []
         for i in range(nb_lines):
@@ -132,14 +220,15 @@ class PyteBufferStubFactory():
                 line.append(default_char)
             self.buffer.append(line)
 
-    def set_color(self, line, col, bg, fg):
-        self.buffer[line][col] = CharStub(bg, fg)
+    def set_color(self, line, col, bg, fg, reverse=False):
+        self.buffer[line][col] = CharStub(bg, fg, reverse=reverse)
 
     def produce(self):
         return self.buffer
 
 
 class CharStub():
-    def __init__(self, bg, fg):
+    def __init__(self, bg, fg, reverse=False):
         self.bg = bg
         self.fg = fg
+        self.reverse = reverse
