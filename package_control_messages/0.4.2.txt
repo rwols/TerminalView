@@ -1,0 +1,6 @@
+0.4.2
+-----
+TerminalView was just updated with the following changes:
+
+* Keybindings, settings, etc. are now available through the command palette
+* Fix for ST3 text wrapping error

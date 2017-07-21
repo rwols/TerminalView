@@ -3,6 +3,3 @@
 TerminalView was just updated with the following changes:
 
 * Fix for package control messages
-
-Check out the README for details. Enjoy!
-
