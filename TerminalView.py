@@ -512,6 +512,9 @@ class TerminalView(object):
         """
         self._shell.send_keypress(key, ctrl, alt, shift, meta)
 
+    def send_string_to_shell(self, string):
+        self._shell.send_string(string)
+
     def _main_update_loop(self):
         """
         This is the main update function. It attempts to run at a certain number
