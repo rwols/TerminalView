@@ -10,7 +10,7 @@ import sublime_plugin
 from . import terminal_emulator
 
 
-class SublimeTerminalBuffer():
+class SublimeTerminalBuffer(object):
     def __init__(self, sublime_view, title, logger, syntax_file=None):
         self._view = sublime_view
         self._view.set_name(title)
@@ -63,6 +63,9 @@ class SublimeTerminalBuffer():
         ratio = settings.get("terminal_view_scroll_ratio", 0.5)
         self._view.terminal_view_emulator = \
             terminal_emulator.PyteTerminalEmulator(80, 24, hist, ratio)
+
+    def __del__(self):
+        self._view.terminal_view_logger.log(str(self) + " del")
 
     def set_keypress_callback(self, callback):
         self._view.terminal_view_keypress_callback = callback
