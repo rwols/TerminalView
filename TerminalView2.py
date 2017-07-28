@@ -1,4 +1,9 @@
-import os
+"""
+Main module for the TerminalView plugin.
+
+With commands for opening and initializing a terminal view.
+"""
+
 import threading
 import time
 import collections
@@ -6,13 +11,14 @@ import weakref
 import sublime
 import sublime_plugin
 
-from .terminal_emulator       import PyteTerminalEmulator
-from .linux_pty               import LinuxPty
-from .sublime_terminal_buffer import set_color_scheme
-from .utils                   import ConsoleLogger
+from .terminal_emulator import PyteTerminalEmulator
+from .linux_pty import LinuxPty
+from .utils import ConsoleLogger
+from distutils.util import strtobool
 
 
 class TerminalView2(sublime_plugin.ViewEventListener, ConsoleLogger):
+    """Main class to glue all parts together."""
 
     ##############
     # Public API #
@@ -42,34 +48,16 @@ class TerminalView2(sublime_plugin.ViewEventListener, ConsoleLogger):
 
     @classmethod
     def is_applicable(cls, settings):
+        """Return true iff _terminal_view is True in the settings."""
         return settings.get("_terminal_view", False)
 
     _instances = weakref.WeakValueDictionary()
     _active_instance = None
 
     def __init__(self, view):
+        """Construct a new TerminalView. Called by the sublime API."""
         sublime_plugin.ViewEventListener.__init__(self, view)
         ConsoleLogger.__init__(self)
-        # super(TerminalView2, self).__init__(*args, **kwargs)
-
-        self._cmd = self.view.settings().get("_terminal_view_cmd", "")
-        self._cwd = self.view.settings().get("_terminal_view_cwd", "")
-
-        self.view.set_scratch(True)
-        self.view.set_read_only(True)
-        self.view.settings().set("gutter", False)
-        self.view.settings().set("highlight_line", False)
-        self.view.settings().set("auto_complete_commit_on_tab", False)
-        self.view.settings().set("draw_centered", False)
-        self.view.settings().set("word_wrap", False)
-        self.view.settings().set("auto_complete", False)
-        self.view.settings().set("draw_white_space", "none")
-        self.view.settings().set("draw_indent_guides", False)
-        self.view.settings().set("caret_style", "blink")
-        self.view.settings().set("scroll_past_end", False)
-        self.view.settings().add_on_change(
-            "color_scheme",
-            lambda: set_color_scheme(self.view))
 
         settings = sublime.load_settings("TerminalView.sublime-settings")
         self.show_colors = settings.get("terminal_view_show_colors", False)
@@ -83,9 +71,6 @@ class TerminalView2(sublime_plugin.ViewEventListener, ConsoleLogger):
 
         # Save a dict on the view to store color regions for each line
         self._color_regions = {}
-
-        # Save keypress callback for this view
-        self._keypress_callback = None
 
         # Keep track of the content in the buffer (having a local copy is a lot
         # faster than using the ST3 API to get the contents)
@@ -104,7 +89,9 @@ class TerminalView2(sublime_plugin.ViewEventListener, ConsoleLogger):
 
         # Start the underlying shell
         try:
-            self._shell = LinuxPty(self._cmd.split(), self._cwd)
+            self._shell = LinuxPty(
+                self.view.settings().get("_terminal_view_cmd").split(),
+                self.view.settings().get("_terminal_view_cwd"))
             self._shell_is_running = True
         except OSError as e:
             sublime.error_message(str(e))
@@ -126,7 +113,6 @@ class TerminalView2(sublime_plugin.ViewEventListener, ConsoleLogger):
             self.update_thread.join()  # Wait for the update thread to stop.
         except RuntimeError:
             pass  # already stopped
-        self.view.settings().set("_terminal_view", False)
         self.log("goodbye from the main thread")
 
     def on_activated(self):
@@ -134,26 +120,6 @@ class TerminalView2(sublime_plugin.ViewEventListener, ConsoleLogger):
 
     def on_deactivated(self):
         self.__class__._active_instance = None
-
-    def terminal_view_keypress_callback(
-            self,
-            key,
-            ctrl=False,
-            alt=False,
-            shift=False,
-            meta=False):
-        """
-        Callback when a keypress is registered in the Sublime Terminal buffer.
-
-        Args:
-            key (str): String describing pressed key. May be a name like
-                       'home'.
-            ctrl (boolean, optional)
-            alt (boolean, optional)
-            shift (boolean, optional)
-            meta (boolean, optional)
-        """
-        self._shell.send_keypress(key, ctrl, alt, shift, meta)
 
     def _main_update_loop(weakself):
         """
@@ -188,8 +154,11 @@ class TerminalView2(sublime_plugin.ViewEventListener, ConsoleLogger):
             if time_left > 0.0:
                 del self  # decrement the reference count during sleep
                 time.sleep(time_left)
-        print("goodbye from the update thread "
-              "(note i can't use self anymore reliably)")
+        try:
+            self.log("goodbye from the update thread")
+        except AttributeError:
+            # self is already gone
+            pass
 
     def insert_data(self, data):
         start = time.time()
@@ -336,6 +305,7 @@ class TerminalView2(sublime_plugin.ViewEventListener, ConsoleLogger):
 
     def _update_lines(self, dirty_lines, color_map):
         self.view.set_read_only(False)
+
         lines = dirty_lines.keys()
         for line_no in sorted(lines):
             # Clear any colors on the line
@@ -374,10 +344,9 @@ class TerminalView2(sublime_plugin.ViewEventListener, ConsoleLogger):
         if content is None:
 
             self.view.run_command(
-                "terminal_view_erase",
+                "_terminal_view_erase",
                 {"region_start": line_start, "region_end": line_end})
 
-            # self.view.erase(edit, line_region)
             if line_no in self._buffer_contents:
                 del self._buffer_contents[line_no]
         else:
@@ -385,12 +354,10 @@ class TerminalView2(sublime_plugin.ViewEventListener, ConsoleLogger):
             content_w_newline = content + "\n"
 
             self.view.run_command(
-                "terminal_view_replace",
+                "_terminal_view_replace",
                 {"region_start": line_start,
                  "region_end": line_end,
                  "content": content_w_newline})
-
-            # self.view.replace(edit, line_region, content_w_newline)
 
             # Update our local copy of the ST3 view buffer
             self._buffer_contents[line_no] = content_w_newline
@@ -447,48 +414,39 @@ class TerminalView2(sublime_plugin.ViewEventListener, ConsoleLogger):
 
         return (start_point, end_point)
 
+    def on_query_context(self, key, _, operand, __):
+        if key == "keys":
+            keys = operand.split("+")
+            assert len(keys) == 5
+            self.log(str(keys))
+            self._shell.send_keypress(keys[0],
+                                      bool(strtobool(keys[1])),
+                                      bool(strtobool(keys[2])),
+                                      bool(strtobool(keys[3])),
+                                      bool(strtobool(keys[4])))
+            return True
+        elif key == "needs_refocus":
+            cursor_pos = self.view.settings().get(
+                "terminal_view_last_cursor_pos")
+            if cursor_pos:
+                if len(self.view.sel()) != 1 or not self.view.sel()[0].empty():
+                    return operand
+                row, col = self.view.rowcol(self.view.sel()[0].end())
+                return (row == cursor_pos[0] and
+                        col == cursor_pos[1]) != operand
+        else:
+            return False
 
-class TerminalViewReplaceCommand(sublime_plugin.TextCommand):
+
+class _terminalViewReplaceCommand(sublime_plugin.TextCommand):
 
     def run(self, edit, region_start, region_end, content):
         self.view.replace(edit,
                           sublime.Region(region_start, region_end), content)
 
 
-class TerminalViewEraseCommand(sublime_plugin.TextCommand):
+class _terminalViewEraseCommand(sublime_plugin.TextCommand):
 
     def run(self, edit, region_start, region_end):
         self.view.erase(edit,
                         sublime.Region(region_start, region_end))
-
-
-class TerminalViewKeypressCommand(sublime_plugin.TextCommand):
-    def run(self, _, **kwargs):
-        print("foo")
-        if type(kwargs["key"]) is not str:
-            sublime.error_message(
-                "Terminal View: Got keypress with non-string key")
-            return
-
-        if "meta" in kwargs and kwargs["meta"]:
-            sublime.error_message(
-                "Terminal View: Meta key is not supported yet")
-            return
-
-        if "meta" not in kwargs:
-            kwargs["meta"] = False
-        if "alt" not in kwargs:
-            kwargs["alt"] = False
-        if "ctrl" not in kwargs:
-            kwargs["ctrl"] = False
-        if "shift" not in kwargs:
-            kwargs["shift"] = False
-
-        instance = TerminalView2.get_active_instance()
-        if instance:
-            instance.terminal_view_keypress_callback(
-                kwargs["key"],
-                kwargs["ctrl"],
-                kwargs["alt"],
-                kwargs["shift"],
-                kwargs["meta"])

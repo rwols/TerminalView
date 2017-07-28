@@ -12,6 +12,7 @@ import sublime_plugin
 from . import sublime_terminal_buffer
 from . import linux_pty
 from . import utils
+from .sublime_terminal_buffer import set_color_scheme
 
 
 class TerminalViewOpen(sublime_plugin.WindowCommand):
@@ -47,6 +48,7 @@ class TerminalViewOpen(sublime_plugin.WindowCommand):
         if not cwd:
             # Last resort
             cwd = "/"
+        print(cwd)
 
         # args = {"cmd": cmd, "title": title, "cwd": cwd, "syntax": syntax}
         # self.window.new_file().run_command("terminal_view_activate", args=args)
@@ -56,6 +58,21 @@ class TerminalViewOpen(sublime_plugin.WindowCommand):
             view.set_syntax_file("Packages/User/" + syntax)
         view.settings().set("_terminal_view_cmd", cmd)
         view.settings().set("_terminal_view_cwd", cwd)
+        view.settings().set("gutter", False)
+        view.settings().set("highlight_line", False)
+        view.settings().set("auto_complete_commit_on_tab", False)
+        view.settings().set("draw_centered", False)
+        view.settings().set("word_wrap", False)
+        view.settings().set("auto_complete", False)
+        view.settings().set("draw_white_space", "none")
+        view.settings().set("draw_indent_guides", False)
+        view.settings().set("caret_style", "blink")
+        view.settings().set("scroll_past_end", False)
+        view.settings().add_on_change(
+            "color_scheme",
+            lambda: set_color_scheme(view))
+        view.set_scratch(True)
+        view.set_read_only(True)
         view.settings().set("_terminal_view", True)
 
 
