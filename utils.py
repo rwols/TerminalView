@@ -33,7 +33,6 @@ class TerminalViewManager():
         if not hasattr(cls, "terminal_views"):
             cls.terminal_views = WeakValueDictionary()
         cls.terminal_views[terminal_view.view.id()] = terminal_view
-        return terminal_view
 
     @classmethod
     def unregister(cls, terminal_view):
