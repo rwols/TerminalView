@@ -48,15 +48,15 @@ class TerminalViewOpen(sublime_plugin.WindowCommand):
             # Last resort
             cwd = "/"
 
-        args = {"cmd": cmd, "title": title, "cwd": cwd, "syntax": syntax}
-        self.window.new_file().run_command("terminal_view_activate", args=args)
-        # view = self.window.new_file()
-        # view.set_name(title)
-        # if syntax:
-        #     view.set_syntax_file("Packages/User/" + syntax)
-        # view.settings().set("_terminal_view_cmd", cmd)
-        # view.settings().set("_terminal_view_cwd", cwd)
-        # view.settings().set("_terminal_view", True)
+        # args = {"cmd": cmd, "title": title, "cwd": cwd, "syntax": syntax}
+        # self.window.new_file().run_command("terminal_view_activate", args=args)
+        view = self.window.new_file()
+        view.set_name(title)
+        if syntax:
+            view.set_syntax_file("Packages/User/" + syntax)
+        view.settings().set("_terminal_view_cmd", cmd)
+        view.settings().set("_terminal_view_cwd", cwd)
+        view.settings().set("_terminal_view", True)
 
 
 class TerminalViewActivate(sublime_plugin.TextCommand):

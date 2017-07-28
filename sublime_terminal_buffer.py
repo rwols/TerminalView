@@ -132,30 +132,6 @@ class TerminalViewScroll(sublime_plugin.TextCommand):
             self.view.terminal_view_scroll = self.view.terminal_view_scroll + ("down", )
 
 
-class TerminalViewKeypress(sublime_plugin.TextCommand):
-    def run(self, _, **kwargs):
-        if type(kwargs["key"]) is not str:
-            sublime.error_message("Terminal View: Got keypress with non-string key")
-            return
-
-        if "meta" in kwargs and kwargs["meta"]:
-            sublime.error_message("Terminal View: Meta key is not supported yet")
-            return
-
-        if "meta" not in kwargs:
-            kwargs["meta"] = False
-        if "alt" not in kwargs:
-            kwargs["alt"] = False
-        if "ctrl" not in kwargs:
-            kwargs["ctrl"] = False
-        if "shift" not in kwargs:
-            kwargs["shift"] = False
-
-        if self.view.terminal_view_keypress_callback:
-            cb = self.view.terminal_view_keypress_callback
-            cb(kwargs["key"], kwargs["ctrl"], kwargs["alt"], kwargs["shift"], kwargs["meta"])
-
-
 class TerminalViewCopy(sublime_plugin.TextCommand):
     def run(self, edit):
         # Get selected region or use line that cursor is on if nothing is
