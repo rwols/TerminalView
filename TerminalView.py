@@ -13,6 +13,7 @@ import sublime_plugin
 from . import sublime_terminal_buffer
 from . import linux_pty
 from . import utils
+from .convert_color_scheme import convert_color_scheme
 
 
 class TerminalViewManager():
@@ -79,6 +80,18 @@ class TerminalViewOpen(sublime_plugin.WindowCommand):
 
 class TerminalViewActivate(sublime_plugin.TextCommand):
     def run(self, _, cmd, title, cwd, syntax):
+        if not syntax:
+            scheme = self.view.settings().get("color_scheme")
+            name = os.path.splitext(os.path.basename(scheme))[0]
+            name += ".hidden-tmTheme"
+            path = os.path.join(sublime.packages_path(), "User", "TerminalView", name)
+            if not os.path.isfile(path):
+                converted = None
+                with open(os.path.join(sublime.packages_path(), "..", scheme), "r") as f:
+                    converted = convert_color_scheme(f.read())
+                os.makedirs(os.path.join(sublime.packages_path(), "User", "TerminalView"), exist_ok=True)
+                with open(path, "w") as f:
+                    f.write(converted)
         terminal_view = TerminalView(self.view)
         terminal_view.run(cmd, title, cwd, syntax)
 
