@@ -2,17 +2,26 @@
 
 [![Build Status](https://travis-ci.org/Wramberg/TerminalView.svg?branch=master)](https://travis-ci.org/Wramberg/TerminalView)
 
-A Linux/macOS plugin for Sublime Text 3 that allows for terminals inside editor views. The plugin uses a pseudo-terminal to start the underlying shell which means it supports
+A Linux/macOS plugin for Sublime Text 3 that allows for terminals inside editor views.
+
+![example.gif](https://raw.githubusercontent.com/Wramberg/TerminalView/master/example.gif "TerminalView Demonstration")
+
+The plugin uses a pseudo-terminal to start the underlying shell which means it supports
 
 * Interactive applications (less, man, ipython, ssh, etc.)
 * Auto-completion
 * Terminal shortcuts (`ctrl`+`c`, etc.)
-* Password prompts
 * Basically everything you would expect from a terminal
 
-**Note, if you encounter any issues please check the "Common problems" section at the bottom for a solution.**
+Besides this it also supports
 
-![example.gif](https://raw.githubusercontent.com/Wramberg/TerminalView/master/example.gif "TerminalView Demonstration")
+* Integration with the Sublime Text build system
+* Shell colors (8 color support for now - development for 256 is planned)
+* Scrollback history
+* Copy/Pasting
+* Static syntax highlighting (as an addition to shell colors)
+
+**Note, if you encounter any issues please check the "Common problems" section at the bottom for a solution.**
 
 ## Dependencies
 To run this plugin you need
@@ -149,6 +158,46 @@ There are currently no syntax-files provided with the plugin so users must creat
 ## Project switching and ST3 startup
 When switching projects or (re)starting ST3 the plugin restarts all terminals views. Unfortunately, there is no obvious way of restoring earlier sessions so the views are completely reset.
 
+## Integrating with Sublime Text build system
+In a Sublime Text build system, you can use the `terminal_view_exec` command as a `"target"` key. This allows you to parse input to the command you are running which is not possible in the standard build system.
+
+For example, consider this `.sublime-project`:
+
+```
+{
+  "build_systems":
+  [
+    {
+      "name": "My Build",
+      "shell_cmd": "c++ program.c -o program",
+      "working_dir" "$project_path"
+      "variants":
+      [
+        {
+          "name": "Run program",
+          "shell_cmd": "./program",
+          "working_dir": "$project_path"
+        }
+      ]
+    }
+  ],
+  // Irrelevant code omitted
+}
+```
+
+When you click on *Tools* -> *Build With...* in the menu, you may select the *My Build - Run program* variant. This opens an output panel and runs your program. Unfortunately, if the program requires input from the user it cannot be provided. To solve this you can change the variant to:
+
+```
+{
+  "name": "Run program",
+  "target": "terminal_view_exec",
+  "shell_cmd": "./program",
+  "working_dir": "$project_path"
+}
+```
+
+This runs your program inside a TerminalView instead where you can interact with it.
+
 ## Common problems
 List of common problems you may encounter when using this plugin.
 
@@ -160,17 +209,6 @@ Ensure you do not have a bash_profile file or similar that changes the value of 
 
 #### The terminal is sluggish and/or uses a lot of memory
 You may have other plugins that conflict with TerminalView. TerminalView does a lot of modifications to the buffer which can conflict with plugins like e.g. GotoLastEditEnhanced. In this particular case a history of all modifications are saved causing unbound memory usage. Please test TerminalView in isolation to see if the issue persists.
-
-## Future development
-Development is performed ad-hoc and current plans include:
-
-* Using ST3 scrolling instead of pyte scrolling (requires decent amount of work but would make scrolling and copying better)
-* Functionality for dynamic amount of scrolling (right now its a fixed ratio only adjustable through settings)
-* Support for "editor" mode where cursor can move freely and standard ST3 keybindings can be used
-* 256 color support
-* Support for more shells
-* QOL shortcut that can find and open filepaths in the terminal window
-* Experimentation with Windows support (through WSL)
 
 ## Acknowledgments
 The pyte terminal emulator (https://github.com/selectel/pyte) is an integral part of this plugin and deserves some credit for making this plugin possible.

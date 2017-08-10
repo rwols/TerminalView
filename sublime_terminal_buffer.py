@@ -118,12 +118,16 @@ class SublimeTerminalBuffer():
     def is_open(self):
         return self._view.is_valid()
 
+    def deactivate(self):
+        self._view.settings().set("terminal_view", False)
+        self.update_view()
+        self._keypress_callback = None
+        SublimeBufferManager.deregister(self._view.id())
+
     def close(self):
         if self.is_open():
             sublime.active_window().focus_view(self._view)
             sublime.active_window().run_command("close_file")
-        SublimeBufferManager.deregister(self._view.id())
-        self._keypress_callback = None
 
     def update_terminal_size(self, nb_rows, nb_cols):
         # Make sure all content beyond the new number of rows is deleted
