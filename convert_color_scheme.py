@@ -13,10 +13,9 @@ def hex_to_rgb(hexstring):
 
 def rgb_to_hex(rgb):
     """Convert an RGB tuple to a hex string."""
-    return "#{}{}{}".format(
-        format(int(rgb[0] * 255), "02x"),
-        format(int(rgb[1] * 255), "02x"),
-        format(int(rgb[2] * 255), "02x"))
+    return "#{:02x}{:02x}{:02x}".format(int(rgb[0] * 255),
+                                        int(rgb[1] * 255),
+                                        int(rgb[2] * 255))
 
 
 def norm2(vec3):
@@ -35,7 +34,7 @@ def next_color(color_text):
     if hex_value == 16777215:  # #ffffff
         return "#fffffe"
     else:
-        return "#{}".format(hex(hex_value + 1)[2:])
+        return "#{:06x}".format(hex_value + 1)
 
 
 # Also see: pyte/graphics.py
