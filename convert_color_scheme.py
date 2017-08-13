@@ -6,6 +6,8 @@ import sublime
 
 def hex_to_rgb(hexstring):
     """Convert a string representing a hex color to an RGB tuple."""
+
+    # Forget about the alpha channel (that's possibly stored in hexstring[7:9]).
     return (int(hexstring[1:3], 16) / 255,
             int(hexstring[3:5], 16) / 255,
             int(hexstring[5:7], 16) / 255)
@@ -13,6 +15,9 @@ def hex_to_rgb(hexstring):
 
 def rgb_to_hex(rgb):
     """Convert an RGB tuple to a hex string."""
+
+    # Note that if a hexstring has an alpha channel, then that information is lost when you go
+    # from hexstring -> rgb-tuple -> hexstring.
     return "#{:02x}{:02x}{:02x}".format(int(rgb[0] * 255),
                                         int(rgb[1] * 255),
                                         int(rgb[2] * 255))
@@ -28,13 +33,14 @@ def distance2(a, b):
     return norm2((a[0] - b[0], a[1] - b[1], a[2] - b[2]))
 
 
-def next_color(color_text):
+def next_color(hexstring):
     """Given a color string "#xxxxxy", returns its next color "#xxxxx{y+1}"."""
-    hex_value = int(color_text[1:], 16)
-    if hex_value == 16777215:  # #ffffff
-        return "#fffffe"
-    else:
-        return "#{:06x}".format(hex_value + 1)
+
+    # Forget about the alpha channel (that's possibly stored in hexstring[7:9]).
+    h = int(hexstring[1:7], 16)
+
+    # Return one more than we got, or one less if we're already at the max.
+    return "#fffffe" if h == 0xffffff else "#{:06x}".format(h + 1)
 
 
 # Also see: pyte/graphics.py
