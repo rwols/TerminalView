@@ -38,6 +38,7 @@ def next_color(color_text):
         return "#{}".format(hex(hex_value + 1)[2:])
 
 
+# Also see: pyte/graphics.py
 _name_from_index = ["black", "white", "red", "green", "blue", "brown", "magenta", "cyan"]
 
 _rgb_from_name = {
@@ -59,7 +60,6 @@ def convert_color_scheme(infile, outfile):
     print("processing file", infile)
     base = plistlib.readPlistFromBytes(sublime.load_resource(infile).encode("utf-8"))
     scheme = base["settings"]
-    colors = set()
 
     # Fetch the "default" color.
     default = hex_to_rgb(scheme[0]["settings"]["background"])
@@ -71,15 +71,20 @@ def convert_color_scheme(infile, outfile):
     # background color for all other colors.
     selection = scheme[0]["settings"]["selection"]
 
-    # Fetch all the other colors.
+    # Fetch all the other colors (start at 1).
+    colors = set()
     for i in range(1, len(scheme)):
-        scope = scheme[i].get("scope", None)
+        item = scheme[i]
+        scope = item.get("scope", None)
         if scope and "sublimelinter" in scope:
             print("skipping sublimelinter scope...")
             continue
-        hexcolor = scheme[i].get("settings", {}).get("foreground", None)
+        hexcolor = item.get("settings", {}).get("foreground", None)
         if hexcolor:
+            # Note that colors is a set, so duplicates are removed while we iterate.
             colors.add(hex_to_rgb(hexcolor))
+
+    # Convert into a list
     colors = list(colors)
     print("extracted", len(colors), "scope colors from scheme")
 
