@@ -58,7 +58,7 @@ _rgb_from_name = {
 
 def convert_color_scheme(infile, outfile):
     """Convert a color scheme from infile into outfile."""
-    print("loading file", infile)
+    print("processing file", infile)
     base = plistlib.readPlistFromBytes(sublime.load_resource(infile).encode("utf-8"))
     scheme = base["settings"]
     colors = set()
@@ -71,7 +71,7 @@ def convert_color_scheme(infile, outfile):
 
     # Fetch the "selection" color. We make the assumption that the selection color is a suitable
     # background color for all other colors.
-    selection = scheme[0]["settings"]["selection"]  # TODO
+    selection = scheme[0]["settings"]["selection"]
 
     # Fetch all the other colors
     for i in range(1, len(scheme)):
@@ -84,9 +84,6 @@ def convert_color_scheme(infile, outfile):
             colors.add(hex_to_rgb(hexcolor))
     colors = list(colors)
     print("extracted", len(colors), "scope colors from scheme")
-    print("default color:", default)
-    print("foreground color:", black)
-    print("selection  color:", selection)
 
     # Start processing our colors
     terminal_colors = [default, black]
@@ -105,17 +102,11 @@ def convert_color_scheme(infile, outfile):
             if d < smallest_distance:
                 best_index = j
                 smallest_distance = d
-        assert best_index >= 0
-        print("best color match for", _name_from_index[i], "(",
-              rgb_to_hex(_rgb_from_name[_name_from_index[i]]), ")", "is",
-              rgb_to_hex(colors[best_index]), "at index", best_index, "with a squared distance of",
-              smallest_distance)
         terminal_colors.append(colors[best_index])
         del colors[best_index]  # don't repeat colors
 
     # convert our colors back to hex
     terminal_colors = [rgb_to_hex(c) for c in terminal_colors]
-    assert len(terminal_colors) == 8
 
     # Remove scopes from the color scheme.
     while len(scheme) > 1:
