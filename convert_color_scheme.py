@@ -41,16 +41,16 @@ def next_color(color_text):
 _name_from_index = ["black", "white", "red", "green", "blue", "brown", "magenta", "cyan"]
 
 _rgb_from_name = {
-    "black":   (0., 0., 0.),
-    "white":   (1., 1., 1.),
+    "black":   (0., 0., 0.),  # NOQA (silence flake8 linter about extraneous whitespace)
+    "white":   (1., 1., 1.),  # NOQA
 
-    "red":     (1., 0., 0.),
-    "green":   (0., 1., 0.),
-    "blue":    (0., 0., 1.),
+    "red":     (1., 0., 0.),  # NOQA
+    "green":   (0., 1., 0.),  # NOQA
+    "blue":    (0., 0., 1.),  # NOQA
 
-    "cyan":    (0., 1., 1.),
-    "magenta": (1., 0., 1.),
-    "brown":   (1., 1., 0.)   # should be yellow...?
+    "cyan":    (0., 1., 1.),  # NOQA
+    "magenta": (1., 0., 1.),  # NOQA
+    "brown":   (1., 1., 0.)   # NOQA FIXME: Should be yellow...? This looks like a pyte issue.
 }
 
 
@@ -71,7 +71,7 @@ def convert_color_scheme(infile, outfile):
     # background color for all other colors.
     selection = scheme[0]["settings"]["selection"]
 
-    # Fetch all the other colors
+    # Fetch all the other colors.
     for i in range(1, len(scheme)):
         scope = scheme[i].get("scope", None)
         if scope and "sublimelinter" in scope:
@@ -83,7 +83,7 @@ def convert_color_scheme(infile, outfile):
     colors = list(colors)
     print("extracted", len(colors), "scope colors from scheme")
 
-    # Start processing our colors
+    # Start processing our colors.
     terminal_colors = [default, black]
     while len(colors) < 6:
         print("adding extra black color so that we have enough colors to work with.")
@@ -91,6 +91,7 @@ def convert_color_scheme(infile, outfile):
         colors.append(black)
 
     # Skip the first two colors ("black" and "white").
+    # This is the main "algorithm" of this function.
     for i in range(2, 8):
         best_index = -1
         smallest_distance = float("inf")
@@ -101,9 +102,9 @@ def convert_color_scheme(infile, outfile):
                 best_index = j
                 smallest_distance = d
         terminal_colors.append(colors[best_index])
-        del colors[best_index]  # don't repeat colors
+        del colors[best_index]  # Don't repeat colors.
 
-    # convert our colors back to hex
+    # Convert our colors back to hex.
     terminal_colors = [rgb_to_hex(c) for c in terminal_colors]
 
     # Remove scopes from the color scheme.
@@ -124,7 +125,7 @@ def convert_color_scheme(infile, outfile):
             settings = {"background": background, "foreground": foreground}
             scheme.append({"scope": scope, "settings": settings})
 
-    # Save the results
+    # Save the results.
     os.makedirs(os.path.dirname(outfile), exist_ok=True)
     print("saving to", outfile)
     plistlib.writePlist(base, outfile)
