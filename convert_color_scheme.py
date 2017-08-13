@@ -79,7 +79,7 @@ def convert_color_scheme(infile, outfile):
         if scope and "sublimelinter" in scope:
             print("skipping sublimelinter scope...")
             continue
-        hexcolor = scheme[i]["settings"].get("foreground", None)
+        hexcolor = scheme[i].get("settings", {}).get("foreground", None)
         if hexcolor:
             colors.add(hex_to_rgb(hexcolor))
     colors = list(colors)
