@@ -56,7 +56,7 @@ class SublimeTerminalBuffer():
         self._view.settings().set("scroll_past_end", False)
 
         self._is_setting_color_scheme = False
-        self._view.settings().add_on_change('color_scheme', self._set_color_scheme)
+        self._view.settings().add_on_change("terminal_view_color_scheme", self._set_color_scheme)
 
         if syntax_file is not None:
             self._view.set_syntax_file("Packages/User/" + syntax_file)
@@ -179,25 +179,20 @@ class SublimeTerminalBuffer():
         """
         Set color scheme for view
         """
-        # color_scheme = "Packages/TerminalView/TerminalView.hidden-tmTheme"
         if self._is_setting_color_scheme:
             return
         self._is_setting_color_scheme = True
         scheme = self._view.settings().get("color_scheme")
-        print("the current color scheme is", scheme)
-        name = os.path.splitext(os.path.basename(scheme))[0]
-        name += ".hidden-tmTheme"
+        name = os.path.splitext(os.path.basename(scheme))[0] + ".hidden-tmTheme"
         resource = "Packages/User/TerminalView/{}".format(name)
-        if self._view.settings().get('color_scheme') != resource:
+        if self._view.settings().get("color_scheme") != resource:
             outfile = os.path.join(sublime.packages_path(), "..", resource)
             if not os.path.isfile(outfile):
                 outfile = os.path.join(sublime.packages_path(), "..", resource)
-                print("converting", scheme, "into", outfile)
                 convert_color_scheme(scheme, outfile)
             # This triggers the function again, but it exits prematurely
             # because self._is_setting_color_scheme is True.
-            print("changing color scheme to", resource)
-            self._view.settings().set('color_scheme', resource)
+            self._view.settings().set("color_scheme", resource)
         self._is_setting_color_scheme = False
 
 
@@ -433,7 +428,6 @@ class TerminalViewUpdate(sublime_plugin.TextCommand):
         for idx, field in line_color_map.items():
             length = field["field_length"]
             color_scope = "terminalview.%s_%s" % (field["color"][0], field["color"][1])
-            print(color_scope)
 
             # Get text point where color should start
             line_start, _ = view_content_cache.get_line_start_and_end_points(line_no)
