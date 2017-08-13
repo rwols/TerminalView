@@ -63,11 +63,11 @@ def convert_color_scheme(infile, outfile):
     scheme = base["settings"]
     colors = set()
 
-    # Fetch the "black" color. In a light scheme, this is actually white-ish.
-    background = hex_to_rgb(scheme[0]["settings"]["background"])
+    # Fetch the "default" color.
+    default = hex_to_rgb(scheme[0]["settings"]["background"])
 
-    # Fetch the "white" color. In a light scheme, it's actually black-ish.
-    foreground = hex_to_rgb(scheme[0]["settings"]["foreground"])
+    # Fetch the "black" color. In a dark scheme, it's actually white-ish.
+    black = hex_to_rgb(scheme[0]["settings"]["foreground"])
 
     # Fetch the "selection" color. We make the assumption that the selection color is a suitable
     # background color for all other colors.
@@ -84,16 +84,16 @@ def convert_color_scheme(infile, outfile):
             colors.add(hex_to_rgb(hexcolor))
     colors = list(colors)
     print("extracted", len(colors), "scope colors from scheme")
-    print("background color:", background)
-    print("foreground color:", foreground)
+    print("default color:", default)
+    print("foreground color:", black)
     print("selection  color:", selection)
 
     # Start processing our colors
-    terminal_colors = [background, foreground]
+    terminal_colors = [default, black]
     while len(colors) < 6:
-        print("adding extra foreground color so that we have enough colors to work with.")
+        print("adding extra black color so that we have enough colors to work with.")
         # we need at least six colors
-        colors.append(foreground)
+        colors.append(black)
 
     # Skip the first two colors ("black" and "white").
     for i in range(2, 8):
@@ -129,7 +129,9 @@ def convert_color_scheme(infile, outfile):
             background = terminal_colors[i]
         for j in range(0, 8):
             scope = "terminalview.{}_{}".format(_name_from_index[i], _name_from_index[j])
-            foreground = terminal_colors[j]
+            # If the foreground color is the same as the background, use the "selection" color for
+            # the foreground.
+            foreground = selection if i == j else terminal_colors[j]
             settings = {"background": background, "foreground": foreground}
             scheme.append({"scope": scope, "settings": settings})
 
