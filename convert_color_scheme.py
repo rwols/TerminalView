@@ -29,6 +29,17 @@ def distance2(a, b):
     return norm2((a[0] - b[0], a[1] - b[1], a[2] - b[2]))
 
 
+def next_color(color_text):
+    """
+    Given a color string "#xxxxxy", returns its next color "#xxxxx{y+1}".
+    """
+    hex_value = int(color_text[1:], 16)
+    if hex_value == 16777215:  # #ffffff
+        return "#fffffe"
+    else:
+        return "#{}".format(hex(hex_value+1)[2:])
+
+
 _name_from_index = ["black", "white", "red", "green", "blue", "brown", "magenta", "cyan"]
 
 _rgb_from_name = {
@@ -111,23 +122,15 @@ def convert_color_scheme(infile, outfile):
         del scheme[-1]
 
     # Now start adding in our own scopes.
-
-    # First add our hack scope.
-    scheme.append({
-        "name": "Text and Source Base Colors (Hack)",
-        "scope": "text, source",
-        "settings": {"foreground": terminal_colors[1]}
-    })
-
-    # Now change the foreground color to the background color... For some reason this gives the
-    # desired result.
-    scheme[0]["settings"]["foreground"] = terminal_colors[0]
-
-    # Bring in all the other colors.
     for i in range(0, 8):
+        if i == 0:
+            background = next_color(terminal_colors[i])
+        else:
+            background = terminal_colors[i]
         for j in range(0, 8):
             scope = "terminalview.{}_{}".format(_name_from_index[i], _name_from_index[j])
-            settings = {"background": terminal_colors[i], "foreground": terminal_colors[j]}
+            foreground = terminal_colors[j]
+            settings = {"background": background, "foreground": foreground}
             scheme.append({"scope": scope, "settings": settings})
 
     # Save the results
