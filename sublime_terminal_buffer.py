@@ -54,6 +54,7 @@ class SublimeTerminalBuffer():
         self._view.settings().set("draw_indent_guides", False)
         self._view.settings().set("caret_style", "blink")
         self._view.settings().set("scroll_past_end", False)
+        self._view.settings().set("rulers", [])
 
         self._is_setting_color_scheme = False
         self._view.settings().add_on_change("terminal_view_color_scheme", self._set_color_scheme)
