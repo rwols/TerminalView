@@ -6,6 +6,7 @@ initializing a terminal view
 import os
 import threading
 import time
+import shlex  # for split()
 
 import sublime
 import sublime_plugin
@@ -119,7 +120,7 @@ class TerminalView:
         self._keep_open = keep_open
 
         # Start the underlying shell
-        self._shell = linux_pty.LinuxPty(self._cmd.split(), self._cwd)
+        self._shell = linux_pty.LinuxPty(shlex.split(self._cmd), self._cwd)
         self._shell_is_running = True
 
         # Initialize the sublime view
