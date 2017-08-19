@@ -47,7 +47,7 @@ class TerminalViewOpen(sublime_plugin.WindowCommand):
     TerminalViewActivate instance for that view is called to handle everything.
     """
     def run(self,
-            cmd="/bin/bash -l",
+            cmd=["/bin/bash", "-l"],
             title="Terminal",
             cwd=None,
             syntax=None,
@@ -56,12 +56,11 @@ class TerminalViewOpen(sublime_plugin.WindowCommand):
         Open a new terminal view
 
         Args:
-            cmd (str, optional): Shell to execute. Defaults to 'bash -l.
+            cmd (str or list of str, optional): Shell to execute. Defaults to ["bin/bash", "-l"].
             title (str, optional): Terminal view title. Defaults to 'Terminal'.
-            cwd (str, optional): The working dir to start out with. Defaults to
-                                 either the currently open file, the currently
-                                 open folder, $HOME, or "/", in that order of
-                                 precedence. You may pass arbitrary snippet-like
+            cwd (str, optional): The working dir to start out with. Defaults to either the
+                                 currently open file, the currently open folder, $HOME, or "/", in
+                                 that order of precedence. You may pass arbitrary snippet-like
                                  variables.
             syntax (str, optional): Syntax file to use in the view.
             keep_open (bool, optional): Keep view open after cmd exits.
@@ -79,6 +78,15 @@ class TerminalViewOpen(sublime_plugin.WindowCommand):
         if not cwd:
             # Last resort
             cwd = "/"
+
+        # Make sure the cmd is a list of strings.
+        if isinstance(cmd, str):
+            cmd = shlex.split(cmd)
+        elif isinstance(cmd, list):
+            pass
+        else:
+            sublime.error_message('The "cmd" argument must be either a string or a list of strings.')
+            return
 
         args = {"cmd": cmd, "title": title, "cwd": cwd, "syntax": syntax, "keep_open": keep_open}
         self.window.new_file().run_command("terminal_view_activate", args=args)
@@ -98,6 +106,10 @@ class TerminalViewActivate(sublime_plugin.TextCommand):
             if not cwd:
                 cwd = "/"
             terminal_view.run(cmd, title, cwd, syntax, keep_open)
+        except KeyError as e:
+            # KeyError gets thrown by LinuxPty when cmd[0] doesn't exist.
+            sublime.error_message(str(e))
+            return
 
 
 class TerminalView:
@@ -120,7 +132,7 @@ class TerminalView:
         self._keep_open = keep_open
 
         # Start the underlying shell
-        self._shell = linux_pty.LinuxPty(shlex.split(self._cmd), self._cwd)
+        self._shell = linux_pty.LinuxPty(self._cmd, self._cwd)
         self._shell_is_running = True
 
         # Initialize the sublime view
