@@ -1,6 +1,7 @@
 import os
 import sublime_plugin
 import shlex
+import sublime
 
 
 class TerminalViewExec(sublime_plugin.WindowCommand):
