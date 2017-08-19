@@ -106,10 +106,6 @@ class TerminalViewActivate(sublime_plugin.TextCommand):
             if not cwd:
                 cwd = "/"
             terminal_view.run(cmd, title, cwd, syntax, keep_open)
-        except KeyError as e:
-            # KeyError gets thrown by LinuxPty when cmd[0] doesn't exist.
-            sublime.error_message(str(e))
-            return
 
 
 class TerminalView:
